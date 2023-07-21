@@ -7,3 +7,10 @@ Functionality of this package includes:
 - Construction of matrix representations of operators (*H*, *S<sub>z</sub>*, etc.) from a basis (chosen from symmetry considerations)
 - Diagonalization (*numpy.linalg.eigh*, *scipy.sparse.linalg.eigh*) of operators
 - Calculating expectation values and thermal averages of operators
+
+## Installation
+FermPy is found on [PyPI](https://pypi.org/project/fermpy/) and easily installed by running
+```
+pip install fermpy
+```
+from the command-line.
