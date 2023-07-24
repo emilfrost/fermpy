@@ -11,8 +11,8 @@ import warnings
 from numpy.typing import ArrayLike
 from numbers import Number
 
-from operator_sum import OpSum, Term
-from bases import Basis
+from .operator_sum import OpSum, Term
+from .bases import Basis
 
 
 OP_TERM_ID = tuple[str, tuple[int, ...]] # (*str_name*, *sites*)
@@ -75,22 +75,27 @@ class OpRep:
         for qn in self.qns_to_consider:
             # All coefficients of all terms are scalars.
             if not self.opsum.parameter_shape:
-                mat_rep_qn = sp.csc_array(2 * (self.basis.dims[qn], ), dtype=dtype)
-                for i, factored_term in enumerate(self.opsum.factored_terms):
+                is_first_term = True
+                for i, factored_term in enumerate(self.opsum.factored_terms, 1):
                     print('factorized term: ', i, f'/ {len(self.opsum.factored_terms)}')
                     if factored_term[0].is_zero:
                         continue
-                    mat_rep_qn_fac = sp.csc_array(2 * (self.basis.dims[qn], ), dtype=dtype)
-                    for term in factored_term:
+                    mat_rep_qn_fac = self._get_mat_rep_of_operator_from_term_single_QN(factored_term[0], qn).copy()
+                    for term in factored_term[1:]:
                         mat_rep_qn_fac += self._get_mat_rep_of_operator_from_term_single_QN(term, qn)
-                    mat_rep_qn += term.coeff * mat_rep_qn_fac
+                    mat_rep_qn_fac *= factored_term[0].coeff
+                    if is_first_term: # += operator is a bit slow with empty sparse arrays
+                        mat_rep_qn = mat_rep_qn_fac
+                        is_first_term = False
+                    else:
+                        mat_rep_qn += mat_rep_qn_fac
             
             # Some coefficients are numpy arrays; do broadcasting.
             else:
                 # Wrap scipy sparse arrays in numpy arrays to take care of broadcasting.
                 mat_rep_qn = np.full(shape=self.opsum.parameter_shape,
-                                      fill_value=sp.csc_array(2 * (self.basis.dims[qn], ), dtype=dtype),
-                                      dtype=object)
+                                     fill_value=sp.csc_array(2 * (self.basis.dims[qn], ), dtype=dtype),
+                                     dtype=object)
                 for factored_term in self.opsum.factored_terms:
                     if factored_term[0].is_zero:
                         continue
@@ -176,7 +181,8 @@ class OpRep:
                                    tol=tol,
                                    **kwargs)
         
-        return np.linalg.eigh(self.mat_rep[qn]) if return_eigenvectors else np.linalg.eigvalsh(self.mat_rep[qn])
+        return np.linalg.eigh(self.mat_rep[qn]) if return_eigenvectors\
+            else np.linalg.eigvalsh(self.mat_rep[qn])
     
     def diagonalize_all_qns(self,
                             k: int | dict[int, int] = 6,
@@ -206,13 +212,7 @@ class OpRep:
                                                **kwargs)
                 for qn in self.mat_rep}
     
-def _parse_and_set_arg(kwargs_qns: dict[int, dict[str, ...]], arg, kw: str):
-    if isinstance(arg, dict):
-        kwargs_qns[kw] = arg
-    else:
-        pass
-    
-def operator_exp_val(op_rep: np.ndarray | sp.spmatrix | dict[int, np.ndarray | sp.spmatrix],
+def operator_exp_val(op_rep: OpRep | np.ndarray | sp.spmatrix | dict[int, np.ndarray | sp.spmatrix],
                      state_rep: np.ndarray | dict[int, np.ndarray],
                      axis: int | None = None,
                      prepend_dim_op_rep: bool = False,
@@ -254,6 +254,15 @@ def operator_exp_val(op_rep: np.ndarray | sp.spmatrix | dict[int, np.ndarray | s
     # Example: op_rep.shape=(m1, m2, ..., N, N) and
     #          state_rep.shape=(N, ) with axis=0 or axis=-1 or axis=None is valid.
     #          out.shape=(m1, m2, ...)
+    if isinstance(op_rep, OpRep):
+        return operator_exp_val(op_rep=op_rep.mat_rep,
+                                state_rep=state_rep,
+                                axis=axis,
+                                prepend_dim_op_rep=prepend_dim_op_rep,
+                                append_dim_op_rep=append_dim_op_rep,
+                                op_rep_is_sparse=op_rep_is_sparse,
+                                dtype=dtype,
+                                weights=weights)
     if isinstance(op_rep, dict) or isinstance(state_rep, dict):
         assert isinstance(op_rep, dict) and isinstance(state_rep, dict)
         common_keys = set(op_rep).intersection(state_rep)
@@ -404,7 +413,7 @@ def _thermal_avg_of_op_arr(op_rep: np.ndarray | sp.spmatrix | dict[int, np.ndarr
                      weights_brc, op_rep_exp_val_brc)
 
 
-def thermal_avg_of_op(op_rep: dict[int, np.ndarray | sp.spmatrix],
+def thermal_avg_of_op(op_rep: OpRep | dict[int, np.ndarray | sp.spmatrix],
                       eig_rep: dict[int, np.ndarray],
                       energies: dict[int, np.ndarray],
                       temp: float | np.ndarray,
@@ -416,6 +425,19 @@ def thermal_avg_of_op(op_rep: dict[int, np.ndarray | sp.spmatrix],
                       append_dim_op_rep: bool = False,
                       op_rep_is_sparse: bool | None = None,
                       dtype: np.dtype | None = None) -> float | complex | np.ndarray:
+    if isinstance(op_rep, OpRep):
+        return thermal_avg_of_op(op_rep=op_rep.mat_rep,
+                                 eig_rep=eig_rep,
+                                 energies=energies,
+                                 temp=temp,
+                                 degeneracies=degeneracies,
+                                 axis_mat=axis_mat,
+                                 axis_eig=axis_eig,
+                                 energy_zero=energy_zero,
+                                 prepend_dim_op_rep=prepend_dim_op_rep,
+                                 append_dim_op_rep=append_dim_op_rep,
+                                 op_rep_is_sparse=op_rep_is_sparse,
+                                 dtype=dtype)
     assert (isinstance(op_rep, dict) and
             isinstance(eig_rep, dict) and
             isinstance(energies, dict) and
