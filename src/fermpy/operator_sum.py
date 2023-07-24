@@ -11,7 +11,7 @@ from typing import Callable
 from collections.abc import MutableSequence
 from numbers import Number
 
-from operators import NAME_TO_OP, HC_DICT
+from .operators import NAME_TO_OP, HC_DICT
 
 
 STATE = tuple[int, ...]
