@@ -83,12 +83,12 @@ fig, (ax_top, ax_bot) = plt.subplots(2, 1,
 ax_top.set(ylabel=r'$(E - E_\mathrm{GS}) / \Delta$',
            xlim=(0, 10),
            ylim=(-0.05, 2)
-          )
+           )
 ax_bot.set(xlabel=r'$\Gamma / \Delta$',
            ylabel=r'$\langle S_{z, \mathrm{dot}} \rangle$',
            xlim=(0, 10),
            ylim=(-0.05, 0.55)
-          )
+           )
 
 ax_top.hlines(1, 0, 10, linestyle='dashed', color='k', linewidth=0.5)
 ax_bot.hlines(0, 0, 10, linestyle='dashed', color='k', linewidth=0.5)
@@ -104,7 +104,7 @@ ax_top.legend(handles=lines_to_label,
               labels=[0, '1/2', 1],
               loc='upper right',
               title='s'
-)
+              )
 ax_bot.plot(Gamma, sz_exp_gs)
 ```
 
