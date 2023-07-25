@@ -101,10 +101,10 @@ for s, energies_s in energies.items():
                                       color=colors[s])[0]
                           )
 ax_top.legend(handles=lines_to_label,
-              labels=range(3),
+              labels=[0, '1/2', 1],
               loc='upper right',
               title='s'
-             )
+)
 ax_bot.plot(Gamma, sz_exp_gs)
 ```
 
